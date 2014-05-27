@@ -25,8 +25,8 @@ bean> help
 
     ls                       list tubes available in the queue
     
-    stat <tube>              show statistics of queue.
-                             optionally, specify <tube_name> to view a particular tube.
+    stat [tube]              show statistics of queue.
+                             optionally, specify tube name to view statistics of a particular tube.
     
     inspect <tube>           prints all the ready jobs content of the specified tube
     
@@ -35,6 +35,8 @@ bean> help
     pop <tube>               pops out a ready job from the specified tube & prints its content    
     
     pop-buried <tube>        pops out a buried job from the specified tube & prints its content    
+    
+    kick <tube>              kicks atmost bound job into ready state
     
     put <tube> <job>         put / produce a job in to the tube
     
