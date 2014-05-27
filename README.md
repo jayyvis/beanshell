@@ -1,4 +1,3 @@
-NOTE: code is yet to be published. we are refactoring it out of our management tools. raise a ticket to indicate us to prioritize.
 
 beanshell
 =========
