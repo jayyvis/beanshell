@@ -11,7 +11,7 @@ dependencies: PyYAML
 beanshell
 ```
 
-### Just do an ls
+### see what's in the queue
 
 ```
 bean> ls
@@ -25,7 +25,7 @@ image_process 	2	    1
 3 tubes
 ```
 
-### What more can you do with it ?
+### and more stuffs
 
 ```
 bean> help
@@ -53,15 +53,17 @@ bean> help
 
 ```
 
+
 ### run a command directly from shell instead of getting in REPL mode
 
 ```
 beanshell -c ls
 ```
 
+
 ### specify beanstalkd server address
 
-By default, beanshell connects to ```localhost:11300``` . But you specify a different using -s or --server option.
+By default, beanshell connects to ```localhost:11300``` . You can specify a different server address using -s or --server option.
 
 ```
 beanshell -s 'jobserver:9888'
