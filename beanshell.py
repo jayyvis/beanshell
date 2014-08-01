@@ -78,9 +78,9 @@ class Commander(object):
     def help(self):
         return """
     ls                       list tubes available in the queue
-    
-    stat <tube>              show statistics of queue.
-                             optionally, specify <tube_name> to view a particular tube.
+
+    stat [<tube>]            show statistics of queue.
+                             optionally, specify <tube> name to view a particular tube.
     
     inspect <tube>           prints all the ready jobs content of the specified tube
     
