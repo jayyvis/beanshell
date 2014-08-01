@@ -1,11 +1,9 @@
 #!/usr/bin/python2.7
 '''
 REPL shell to interact with beanstalkd job queue
-
-jayy 28-May-2014
 '''
 
-import beanstalkc as bean
+from lib import beanstalkc as bean
 import readline
 import json
 import argparse
