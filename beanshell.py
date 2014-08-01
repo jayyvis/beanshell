@@ -13,6 +13,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--host', default="localhost", help="beanstalkd hostname or ip address. defaults to localhost")
     parser.add_argument('--port', default="4242", help="running port. defaults to 4242")
+    parser.add_argument('--cmd', default=None, help="running port. defaults to 4242")
     
     args = vars(parser.parse_args())
     
@@ -22,6 +23,14 @@ def main():
     #connect to beanstalk queue
     queue = beanstalkc.Connection(HOST, PORT, parse_yaml=True)
     commander = Commander(queue)
+
+    #=======================================================================
+    # command line mode
+    #=======================================================================
+    if args['cmd']:
+        result = commander.eval(args['cmd'])
+        print result
+        return
     
     #===========================================================================
     # REPL mode
