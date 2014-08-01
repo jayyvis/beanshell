@@ -11,17 +11,17 @@ import argparse
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--host', default="localhost", help="beanstalkd hostname or ip address. defaults to localhost")
-    parser.add_argument('--port', default="4242", help="running port. defaults to 4242")
-    parser.add_argument('--cmd', default=None, help="running port. defaults to 4242")
+    parser.add_argument('-s', '--server', default="localhost:11300", help="beanstalkd server address. defaults to localhost:11300")
+    parser.add_argument('-c', '--cmd', default=None, help="run a command directly in shell instead of REPL")
     
     args = vars(parser.parse_args())
     
-    HOST = args['host']
-    PORT = int(args['port'])
+    SERVER = args['server']
+    
+    HOST, PORT = SERVER.split(':') 
 
     #connect to beanstalk queue
-    queue = beanstalkc.Connection(HOST, PORT, parse_yaml=True)
+    queue = beanstalkc.Connection(HOST, int(PORT), parse_yaml=True)
     commander = Commander(queue)
 
     #=======================================================================
@@ -35,8 +35,6 @@ def main():
     #===========================================================================
     # REPL mode
     #===========================================================================
-    print "connected to beanstalkd server running on %(host)s:%(port)s" % args
-    
     #begin the REPL
     while True:
         #read
