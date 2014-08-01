@@ -7,12 +7,13 @@ from lib import beanstalkc
 import readline
 import json
 import argparse
+import os
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-s', '--server', default="localhost:11300", help="beanstalkd server address. defaults to localhost:11300")
-    parser.add_argument('-c', '--cmd', default=None, help="run a command directly in shell instead of REPL")
+    parser.add_argument('-s', '--server', default=os.getenv('BEANSHELL_SERVER', 'localhost:11300'), help='beanstalkd server address. defaults to localhost:11300')
+    parser.add_argument('-c', '--cmd', default=None, help='run a command directly in shell instead of REPL')
     
     args = vars(parser.parse_args())
     
