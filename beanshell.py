@@ -3,33 +3,55 @@
 REPL shell to interact with beanstalkd job queue
 '''
 
-from lib import beanstalkc as bean
+from lib import beanstalkc
 import readline
 import json
 import argparse
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--host', default="localhost", help="beanstalkd hostname or ip address. defaults to localhost")
-parser.add_argument('--port', default="4242", help="running port. defaults to 4242")
-args = vars(parser.parse_args())
 
-HOST = args['host']
-PORT = int(args['port'])
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--host', default="localhost", help="beanstalkd hostname or ip address. defaults to localhost")
+    parser.add_argument('--port', default="4242", help="running port. defaults to 4242")
+    
+    args = vars(parser.parse_args())
+    
+    HOST = args['host']
+    PORT = int(args['port'])
 
-queue = None
+    #connect to beanstalk queue
+    queue = beanstalkc.Connection(HOST, PORT, parse_yaml=True)
+    commander = Commander(queue)
+    
+    #===========================================================================
+    # REPL mode
+    #===========================================================================
+    print "connected to beanstalkd server running on %(host)s:%(port)s" % args
+    
+    #begin the REPL
+    while True:
+        #read
+        try:
+            cmd = str(raw_input('\nbean> '))
+        except EOFError:
+            print #a line break
+            cmd = 'exit'
+        
+        #eval & print
+        if cmd == 'exit': print 'bye'; break
+        
+        result = commander.eval(cmd)
+        print result
 
-def connect():
-    global queue
-    queue = bean.Connection(HOST, PORT, parse_yaml=True)
+        #loop <-
 
 
 class Commander(object):
-    __instance = None
-    
-    @classmethod
-    def eval(cls, cmd):
-        if cls.__instance is None: cls.__instance = Commander()
-        
+    def __init__(self, queue):
+        self._queue = queue
+        self._validate_json = True        
+
+    def eval(self, cmd):
         #parse command
         tokens = cmd.split(' ')
         cmd = tokens[0].replace('-', '_') #substitute underscore for hyphen
@@ -37,15 +59,13 @@ class Commander(object):
         
         #find the handler & invoke it
         try:
-            handler = getattr(cls.__instance, cmd)
+            handler = getattr(self, cmd)
             return handler(*args)
         except AttributeError:
             return 'invalid command: %s. enter help or h to read the manual.' % cmd
         except Exception:
             return 'seems you got the syntax wrong. enter help or h to read the manual.'
 
-    def __init__(self):
-        self.put_validate_json_flag = True        
     
     def help(self):
         return """
@@ -66,13 +86,20 @@ class Commander(object):
     
     put <tube> <job>         put / produce a job in to the tube
     
+    json                     turn ON/OFF json validation while putting a job
+    
     ctrl+d                   quit the bean shell
 """
+
     def h(self):
         return self.help()
     
+    def json(self):
+        self._validate_json = not self._validate_json
+        return 'json validation ' + ('ON' if self._validate_json else 'OFF')
+    
     def ls(self):
-        tubes = queue.tubes()
+        tubes = self._queue.tubes()
         max_tubename_size = 1
         
         for tubename in tubes:
@@ -90,7 +117,7 @@ class Commander(object):
         return tubes_summary
     
     def stat(self, tubename=None, parse=True):
-        stats = queue.stats_tube(tubename) if tubename else queue.stats()
+        stats = self._queue.stats_tube(tubename) if tubename else self._queue.stats()
         if not parse: return stats
         
         summary = '\n'.join(['%s : %s' % (k, v) for k, v in stats.iteritems()])
@@ -98,13 +125,13 @@ class Commander(object):
         return header + '\n' + '-' * 20 + '\n' + summary
 
     def inspect(self, tubename):
-        queue.watch(tubename)
+        self._queue.watch(tubename)
     
         jobs = []
         stat = self.stat(tubename, parse=False)
         
         for i in xrange(stat['current-jobs-ready']):
-            job = queue.reserve(timeout=5)
+            job = self._queue.reserve(timeout=5)
             if job is None: break
             
             jobs.append(job.body)
@@ -113,25 +140,21 @@ class Commander(object):
         return '\n\n'.join(jobs) + '\n\n%d jobs' % len(jobs)
         
     def put(self, tubename, packet):
-        if self.put_validate_json_flag:
+        if self._validate_json:
             #validate packet is a json
             try:
                 json.loads(packet)
             except:
                 return 'ERROR: invalid json packet'
             
-        queue.use(tubename)
-        jid = queue.put(packet)
+        self._queue.use(tubename)
+        jid = self._queue.put(packet)
         return 'done:%s' % jid
-    
-    def put_validate_json(self):
-        self.put_validate_json_flag = not self.put_validate_json_flag
-        return self.put_validate_json_flag
 
     def pop(self, tubename):
-        queue.watch(tubename)
+        self._queue.watch(tubename)
     
-        job = queue.reserve(timeout=5)
+        job = self._queue.reserve(timeout=5)
         
         if job:
             job.delete()
@@ -140,9 +163,9 @@ class Commander(object):
             return None
 
     def pop_buried(self, tubename):
-        queue.use(tubename)
+        self._queue.use(tubename)
     
-        job = queue.peek_buried()
+        job = self._queue.peek_buried()
         
         if job:
             job.delete()
@@ -151,59 +174,35 @@ class Commander(object):
             return None
         
     def kick(self, tubename):
-        queue.use(tubename)
-        return queue.kick()
+        self._queue.use(tubename)
+        return self._queue.kick()
     
     def clear(self, tubename):
         stat = self.stat(tubename, parse=False)
         
         #clear ready jobs
         ready_count = 0
-        queue.watch(tubename)
+        self._queue.watch(tubename)
         
         for i in xrange(stat['current-jobs-ready']):        
-            job = queue.reserve(timeout=5)
+            job = self._queue.reserve(timeout=5)
             if job is None: break
             job.delete()
             ready_count += 1
 
         #clear buried jobs        
         buried_count = 0
-        queue.use(tubename)
+        self._queue.use(tubename)
         
         for i in xrange(stat['current-jobs-buried']):
-            job = queue.peek_buried()
+            job = self._queue.peek_buried()
             if job is None: break
             job.delete()
             buried_count += 1
                 
         return 'cleared jobs. ready: %d  buried: %d' % (ready_count, buried_count)
-        
+    
 
-#connect to beanstalk queue
-connect()
-print "connected to beanstalkd server running on %(host)s:%(port)s" % args
-
-#begin the REPL
-while True:
-    #read
-    try:
-        cmd = str(raw_input('\nbean> '))
-    except EOFError:
-        print #a line break
-        cmd = 'exit'
-    
-    #eval & print
-    if cmd == 'exit': print 'bye'; break
-    
-    try:
-        result = Commander.eval(cmd)
-    except bean.SocketError:
-        connect() #try connectining again
-        result = Commander.eval(cmd)
-        
-    print result 
-    
-    #loop <-
-    
+if __name__ == '__main__':
+    main()
     
